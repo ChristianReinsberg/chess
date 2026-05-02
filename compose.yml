@@ -1,0 +1,13 @@
+services:
+  webpack:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: webpack-dev
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
