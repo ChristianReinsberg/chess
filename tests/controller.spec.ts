@@ -62,5 +62,49 @@ describe('Chess Board Logic', () => {
     it('should have two initial moves for knights', () => {
         const knight = controller.board[1][0];
         expect(knight?.moves.length).toBe(2);
+    });
+
+    it('should have five moves for a white knight on C3', () => {
+        controller.board[1][7] = null;
+        let knight = controller.board[2][5];
+        knight = {type: 'knight', color: 'white', isMoved: true, isTaken: false, moves: []};
+        knight.moves = controller.moveStrategies['knight'](controller.board, {x: 2, y: 5}, 'white');
+        expect(knight.moves.length).toBe(5);
     })
+
+    it('should not have any initial moves for bishops', () => {
+        const bishop = controller.board[2][0];
+        expect(bishop?.moves.length).toBe(0);
+    });
+
+    it('should have six moves for white bishop on G4', () => {
+        let bishop = controller.board[6][4];
+        bishop = {type: 'bishop', color: 'white', isMoved: true, isTaken: false, moves: []};
+        bishop.moves = controller.moveStrategies['bishop'](controller.board, {x: 6, y: 4}, 'white');
+        expect(bishop.moves.length).toBe(6);
+    });
+
+    it('should not have any initial moves for queens', () => {
+        const queen = controller.board[3][0];
+        expect(queen?.moves.length).toBe(0);
+    });
+
+    it('should have 19 moves for a white queen on D4', () => {
+        let queen = controller.board[3][4];
+        queen = {type: 'queen', color: 'white', isMoved: true, isTaken: false, moves: []};
+        queen.moves = controller.moveStrategies['queen'](controller.board, {x: 3, y: 4}, 'white');
+        expect(queen.moves.length).toBe(19);
+    });
+
+    it('should not have any initial moves for kings', () => {
+        const king = controller.board[4][0];
+        expect(king?.moves.length).toBe(0);
+    });
+
+    it('should have four moves for a white king on E4', () => {
+        let king = controller.board[4][4];
+        king = {type: 'king', color: 'white', isMoved: true, isTaken: false, moves: []};
+        king.moves = controller.moveStrategies['king'](controller.board, {x: 4, y: 4}, 'white');
+        expect(king.moves.length).toBe(4);
+    });
 });
