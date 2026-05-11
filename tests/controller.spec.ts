@@ -119,7 +119,7 @@ describe('Movement Logic', () => {
     beforeEach(() => {
         document.body.innerHTML = '<main id="chess-board" class="grid grid-cols-8 aspect-square border-8"></main>'
         controller = new Controller();
-        controller.gameState = {lastMove: null, color: 'white', removedPieces: {black: [], white: []}, promotions: {black: [], white: []}, enPassantTarget: null};
+        controller.gameState = {lastMove: null, color: 'white', removedPieces: {black: [], white: []}, promotions: {black: [], white: []}, enPassantTarget: null, winner: null};
     });
 
     it('should move black pawn from A7 to A6', () => {
@@ -341,5 +341,76 @@ describe('Movement Logic', () => {
         expect(controller.board[1][2]?.type).toBe('pawn');
         expect(controller.board[1][3]).toBeNull();
         expect(controller.gameState.removedPieces.black.length).toBe(1);
+    });
+
+    it('should check for checked king', () => {
+        const removeSquares = [{x: 1, y: 7}, {x: 2, y: 7}, {x: 3, y: 7}, {x: 5, y: 7}, {x: 6, y: 7}];
+        removeSquares.forEach(square => {
+            const index = controller.activePieces.indexOf(controller.activePieces.find(piece => piece.coord.x === square.x && piece.coord.y === square.y)!);
+            controller.activePieces.splice(index, 1);
+            controller.board[square.x][square.y] = null;
+        });
+        controller.activePieces.find(piece => piece.coord.x === 3 && piece.coord.y === 6)!.piece!.color = 'black';
+        controller.board[3][6]!.color = 'black';
+        controller.board[3][6]!.attacks = controller.moveStrategies['pawn'](controller.board, {x: 3, y: 6}, 'black').attacks;
+        controller.activePieces.find(piece => piece.coord.x === 5 && piece.coord.y === 6)!.piece!.color = 'black';
+        controller.board[5][6]!.color = 'black';
+        controller.board[5][6]!.attacks = controller.moveStrategies['pawn'](controller.board, {x: 3, y: 6}, 'black').attacks;
+        controller.activePieces.find(piece => piece.coord.x === 0 && piece.coord.y === 7)!.piece!.color = 'black';
+        controller.board[0][7]!.color = 'black';
+        controller.board[0][7]!.attacks = controller.moveStrategies['rook'](controller.board, {x: 0, y: 6}, 'black').attacks;
+        controller.activePieces.find(piece => piece.coord.x === 7 && piece.coord.y === 7)!.piece!.color = 'black';
+        controller.board[7][7]!.color = 'black';
+        controller.board[7][7]!.attacks = controller.moveStrategies['rook'](controller.board, {x: 7, y: 7}, 'black').attacks;
+        controller.activePieces.find(piece => piece.coord.x === 0 && piece.coord.y === 7)!.piece!.color = 'black';
+        controller.board[0][7]!.color = 'black';
+        controller.board[0][7]!.attacks = controller.moveStrategies['rook'](controller.board, {x: 0, y: 6}, 'black').attacks;
+        controller.activePieces.find(piece => piece.coord.x === 7 && piece.coord.y === 7)!.piece!.color = 'black';
+        controller.board[5][5] = controller.board[0][7];
+        controller.board[5][5]!.attacks = controller.moveStrategies['rook'](controller.board, {x: 5, y: 5}, 'black').attacks;
+        controller.board[3][5] = controller.board[0][7];
+        controller.board[3][5]!.attacks = controller.moveStrategies['rook'](controller.board, {x: 3, y: 5}, 'black').attacks;
+        controller.activePieces.push({piece: controller.board[5][5], coord: {x: 5, y: 5}}, {piece: controller.board[3][5], coord: {x: 3, y: 5}})
+        const pawn = document.querySelector(`#white-pawn-0`) as HTMLElement
+        controller.selectPiece(pawn);
+        controller.movePiece(pawn, {x: 0, y: 5});
+        expect(controller.gameState.winner).toBe('black');
+    });
+
+    it('should select a piece and move it via eventlisteners', () => {
+        const pawn = document.querySelector('#white-pawn-0') as HTMLElement;
+        const square = document.querySelector('div[data-xcoord="0"][data-ycoord="4"]') as HTMLElement;
+        pawn.click();
+        expect(square.classList).toContain('bg-yellow-300!');
+        square.click();
+        expect(pawn.dataset.xcoord).toBe('0');
+        expect(pawn.dataset.ycoord).toBe('4');
+    });
+
+    it('should let black rook throw white pawn if black pawn at A7 is gone and white rook to throw black rook', () => {
+        const index = controller.activePieces.indexOf(controller.activePieces.find(piece => piece.coord.x === 0 && piece.coord.y === 1)!);
+        controller.activePieces.splice(index, 1);
+        controller.board[0][1] = null;
+        expect(controller.board[0][1]).toBeNull();
+        expect(controller.activePieces.length).toBe(31);
+        const rook = document.querySelector('#black-rook-0') as HTMLElement;
+        const pawn = document.querySelector('#white-pawn-0') as HTMLElement;
+        const square = document.querySelector('div[data-xcoord="0"][data-ycoord="4"]') as HTMLElement;
+        const wRook = document.querySelector('#white-rook-0') as HTMLElement;
+        pawn.click();
+        expect(square.classList).toContain('bg-yellow-300!');
+        square.click();
+        rook.click();
+        expect(square.classList).toContain('bg-red-300!');
+        pawn.click();
+        expect(rook.dataset.xcoord).toBe('0');
+        expect(rook.dataset.ycoord).toBe('4');
+        expect(square.firstChild).toBe(rook);
+        wRook.click();
+        expect(square.classList).toContain('bg-red-300!');
+        rook.click();
+        expect(wRook.dataset.xcoord).toBe('0');
+        expect(wRook.dataset.ycoord).toBe('4');
+        expect(square.firstChild).toBe(wRook);
     });
 });

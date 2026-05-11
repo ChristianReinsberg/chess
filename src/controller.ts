@@ -13,16 +13,17 @@ import WhiteQueen from './assets/white_queen.svg';
 import WhiteRook from './assets/white_rook.svg';
 
 export class Controller {
-    board: Board = [new Array(8).fill(null), new Array(8).fill(null), new Array(8).fill(null), new Array(8).fill(null), new Array(8).fill(null), new Array(8).fill(null), new Array(8).fill(null), new Array(8).fill(null)];
+    board: Board = Array.from({length: 8}, () => new Array(8).fill(null));
     chessBoard = document.querySelector('#chess-board') as HTMLElement;
     activePieces: {piece: Square, coord: Coord}[] = [];
     x_letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
     y_numbers = [8, 7, 6, 5, 4, 3, 2, 1];
-    gameState: GameState = {lastMove: null, color: 'white', removedPieces: {black: [], white: []}, promotions: {black: [], white: []}, enPassantTarget: null};
+    selectedPiece: HTMLElement | null = null;
+    gameState: GameState = {lastMove: null, color: 'white', removedPieces: {black: [], white: []}, promotions: {black: [], white: []}, enPassantTarget: null, winner: null};
     moveStrategies: Record<PieceType, MoveCalculator> = {
         'pawn': (board, pos, color) => {
             const moves: Move[] = [];
-            const attacks: Move[] = []
+            const attacks: Move[] = [];
             const direction = color === 'black' ? 1 : -1;
 
             if (this.isEmpty(board, pos.x, pos.y + direction)) {
@@ -184,6 +185,11 @@ export class Controller {
                 div.dataset.xcoord = j.toString();
                 div.dataset.ycoord = i.toString();
                 div.id = `${this.x_letters[j]}${this.y_numbers[i]}`;
+                div.addEventListener('click', () => {
+                    if (this.selectedPiece) {
+                        this.movePiece(this.selectedPiece, {x: j, y: i});
+                    }
+                });
                 div.className = (i + j) % 2 ? 'bg-black size-8 lg:size-19' : 'bg-white size-8 lg:size-19';
                 this.chessBoard.append(div);
                 if (i === 1 || i === 6) {
@@ -202,8 +208,18 @@ export class Controller {
         img.className = 'w-full aspect-square';
         img.dataset.xcoord = x.toString();
         img.dataset.ycoord = y.toString();
+        img.dataset.color = color;
         img.src = color === 'black' ? BlackPawn : WhitePawn;
         img.id = `${color}-pawn-${x}`;
+        img.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (this.selectedPiece && this.selectedPiece.dataset.color !== color) {
+                console.log(this.selectedPiece.id)
+                this.movePiece(this.selectedPiece, {x: parseInt(img.dataset.xcoord!), y: parseInt(img.dataset.ycoord!)});
+            } else if (this.gameState.color === img.dataset.color) {
+                this.selectPiece(img);
+            }
+        });
         div.append(img); 
         return {
             type: 'pawn' as PieceType,
@@ -220,6 +236,15 @@ export class Controller {
         img.className = 'w-full aspect-square';
         img.dataset.xcoord = x.toString();
         img.dataset.ycoord = y.toString();
+        img.dataset.color = color;
+        img.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (this.selectedPiece && this.selectedPiece.dataset.color !== color) {
+                this.movePiece(this.selectedPiece, {x: parseInt(img.dataset.xcoord!), y: parseInt(img.dataset.ycoord!)});
+            } else if (this.gameState.color === img.dataset.color) {
+                this.selectPiece(img);
+            }
+        })
         const piece: Record<number, Piece> = {
             0: {type: 'rook', color, isMoved: false, isTaken: false, moves: [], attacks: []},
             1: {type: 'knight', color, isMoved: false, isTaken: false, moves: [], attacks: []},
@@ -280,6 +305,12 @@ export class Controller {
     }
 
     selectPiece(piece: HTMLElement) {
+        if (this.selectedPiece) {
+            const x = parseInt(this.selectedPiece.dataset.xcoord!);
+            const y = parseInt(this.selectedPiece.dataset.ycoord!);
+            this.clearHighlights(this.board[x][y]!.moves);
+        }
+        this.selectedPiece = piece;
         const coords: Coord = {x: +(piece.dataset.xcoord as string), y: +(piece.dataset.ycoord as string)};
         let square = this.board[coords.x][coords.y];
         if (square) {
@@ -348,6 +379,10 @@ export class Controller {
             this.gameState.enPassantTarget = null;
         }
         this.updateElementPosition(piece, target);
+        this.selectedPiece = null;
+        if (this.isChess()) {
+            this.displayWinnerModal();
+        }
     }
 
     private clearHighlights(moves: Move[]) {
@@ -392,7 +427,7 @@ export class Controller {
         if (!king || king.type !== 'king' || king.isMoved) {
             return false;
         }
-        if (!rook || rook.type !== 'rook' || rook.isMoved) {
+        if (!rook || rook.type !== 'rook' || rook.isMoved || rook?.color !== color) {
             return false;
         }
         if (this.isSquareAttacked({x: 4, y})) {
@@ -423,5 +458,53 @@ export class Controller {
         piece.dataset.ycoord = to.y.toString();
         this.updateElementPosition(piece, to);
         this.activePieces[this.activePieces.indexOf(this.activePieces.find(active => active.coord.x === from.x && active.coord.y === from.y)!)] = {piece: rookFrom, coord: to};
+    }
+
+    isChess() {
+        let attackedMoves = 0;
+        const {moves} = this.activePieces.find(king => king.piece?.type === 'king' && king.piece.color !== this.gameState.color)?.piece!;
+        for (const move of moves) {
+            if (this.isSquareAttacked(move)) {
+                attackedMoves++;
+            }
+        }
+        return moves.length === attackedMoves;
+    }
+
+    displayWinnerModal() {
+        this.gameState.winner = this.gameState.color;
+        const dialog = document.createElement('dialog');
+        dialog.classList.add('p-4');
+        const heading = document.createElement('h1');
+        heading.classList.add('text-4xl', 'text-center');
+        heading.textContent = 'Checkmate';
+        dialog.append(heading);
+        const paragraph = document.createElement('p');
+        paragraph.classList.add('text-center');
+        paragraph.textContent = `The winner is ${this.gameState.color}`;
+        dialog.append(paragraph);
+        const button = document.createElement('button');
+        button.classList.add('inline-block', 'mx-auto', 'rounded-lg', 'shadow', 'hover:bg-gray-100');
+        button.textContent = 'play again';
+        button.addEventListener('click', () => {
+            this.resetGame();
+        });
+        dialog.append(button);
+    }
+
+    resetGame() {
+        this.board = Array.from({length: 8}, () => new Array(8).fill(null));
+        this.chessBoard.innerHTML = '';
+        this.gameState = {
+            lastMove: null,
+            color: 'white',
+            removedPieces: {white: [], black: []},
+            promotions: {white: [], black: []},
+            enPassantTarget: null,
+            winner: null,
+        };
+        this.activePieces = [];
+        this.selectedPiece = null;
+        this.initBoard();
     }
 }

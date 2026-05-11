@@ -27,4 +27,5 @@ export interface GameState {
     removedPieces: {white: Piece[], black: Piece[]};
     promotions: {white: Piece[], black: Piece[]};
     enPassantTarget: Coord | null;
+    winner: Color | null;
 }
