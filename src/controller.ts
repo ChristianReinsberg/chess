@@ -12,6 +12,33 @@ import WhitePawn from './assets/white_pawn.svg';
 import WhiteQueen from './assets/white_queen.svg';
 import WhiteRook from './assets/white_rook.svg';
 
+const pieceImg: Record<string, string> = {
+    'white-pawn': WhitePawn,
+    'black-pawn': BlackPawn,
+    'white-bishop': WhiteBishop,
+    'black-bishop': BlackBishop,
+    'white-king': WhiteKing,
+    'black-king': BlackKing,
+    'white-knight': WhiteKnight,
+    'black-knight': BlackKnight,
+    'white-rook': WhiteRook,
+    'black-rook': BlackRook,
+    'white-queen': WhiteQueen,
+    'black-queen': BlackQueen
+};
+
+const typeList: Record<number, PieceType> = {
+    0: 'rook',
+    1: 'knight',
+    2: 'bishop',
+    3: 'queen',
+    4: 'king',
+    5: 'bishop',
+    6: 'knight',
+    7: 'rook',
+    8: 'pawn',
+};
+
 export class Controller {
     board: Board = Array.from({length: 8}, () => new Array(8).fill(null));
     chessBoard = document.querySelector('#chess-board') as HTMLElement;
@@ -192,94 +219,37 @@ export class Controller {
                 });
                 div.className = (i + j) % 2 ? 'bg-black size-8 lg:size-19' : 'bg-white size-8 lg:size-19';
                 this.chessBoard.append(div);
-                if (i === 1 || i === 6) {
-                    this.board[j][i] = this.initPawns(i === 1 ? 'black' : 'white', j, i, div)
-                }
-                if (i === 0 || i === 7) {
-                    this.board[j][i] = this.initSpecials(i === 0 ? 'black' : 'white', j, i, div);
+                const color = i === 0 || i === 1 ? 'black' : 'white'
+                if (i === 0 || i === 1 || i === 6 || i === 7) {
+                    this.initPiece(color, j, i, div);
+                    this.board[j][i] = this.createPiece(typeList[i === 1 || i === 6 ? 8 : j], color);
                 }
             }
         }
         this.refreshAllMoves();
     }
 
-    initPawns(color: Color, x: number, y: number, div: HTMLDivElement) {
+    createPiece(type: PieceType, color: Color) {
+        return {type, color, isMoved: false, isTaken: false, moves: [], attacks: []}
+    }
+
+    initPiece(color: Color, x: number, y: number, div: HTMLDivElement) {
         const img = document.createElement('img');
         img.className = 'w-full aspect-square';
         img.dataset.xcoord = x.toString();
         img.dataset.ycoord = y.toString();
         img.dataset.color = color;
-        img.src = color === 'black' ? BlackPawn : WhitePawn;
-        img.id = `${color}-pawn-${x}`;
+        img.src = pieceImg[`${color}-${typeList[y === 1 || y === 6 ? 8 : x]}`];
+        img.id = `${color}-${typeList[y === 1 || y === 6 ? 8 : x]}-${x}`;
         img.addEventListener('click', (e) => {
             e.stopPropagation();
             if (this.selectedPiece && this.selectedPiece.dataset.color !== color) {
-                console.log(this.selectedPiece.id)
                 this.movePiece(this.selectedPiece, {x: parseInt(img.dataset.xcoord!), y: parseInt(img.dataset.ycoord!)});
             } else if (this.gameState.color === img.dataset.color) {
                 this.selectPiece(img);
             }
         });
-        div.append(img); 
-        return {
-            type: 'pawn' as PieceType,
-            color,
-            isMoved: false,
-            isTaken: false,
-            moves: [],
-            attacks: [],
-        };
-    }
-
-    initSpecials(color: Color, x: number, y: number, div: HTMLDivElement) {
-        const img = document.createElement('img');
-        img.className = 'w-full aspect-square';
-        img.dataset.xcoord = x.toString();
-        img.dataset.ycoord = y.toString();
-        img.dataset.color = color;
-        img.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (this.selectedPiece && this.selectedPiece.dataset.color !== color) {
-                this.movePiece(this.selectedPiece, {x: parseInt(img.dataset.xcoord!), y: parseInt(img.dataset.ycoord!)});
-            } else if (this.gameState.color === img.dataset.color) {
-                this.selectPiece(img);
-            }
-        })
-        const piece: Record<number, Piece> = {
-            0: {type: 'rook', color, isMoved: false, isTaken: false, moves: [], attacks: []},
-            1: {type: 'knight', color, isMoved: false, isTaken: false, moves: [], attacks: []},
-            2: {type: 'bishop', color, isMoved: false, isTaken: false, moves: [], attacks: []},
-            3: {type: 'queen', color, isMoved: false, isTaken: false, moves: [], attacks: []},
-            4: {type: 'king', color, isMoved: false, isTaken: false, moves: [], attacks: []},
-        };
-        if (x === 0 || x === 7) {
-            img.src = color === 'black' ? BlackRook : WhiteRook;
-            img.id = `${color}-rook-${x}`;
-            div.append(img)
-            return piece[0];
-        }
-        if (x === 1 || x === 6) {
-            img.src = color === 'black' ? BlackKnight : WhiteKnight;
-            img.id = `${color}-knight-${x}`;
-            div.append(img)
-            return piece[1];
-        }
-        if (x === 2 || x === 5) {
-            img.src = color === 'black' ? BlackBishop : WhiteBishop;
-            img.id = `${color}-bishop-${x}`;
-            div.append(img)
-            return piece[2];
-        }
-        if (x === 3) {
-            img.src = color === 'black' ? BlackQueen : WhiteQueen;
-            img.id = `${color}-queen-${x}`;
-            div.append(img)
-            return piece[3];
-        }
-        img.src = color === 'black' ? BlackKing : WhiteKing;
-        img.id = `${color}-king-${x}`;
-        div.append(img)
-        return piece[4];
+        div.append(img);
     }
 
     isEmpty(board: Board, posX: number, posY: number) {
@@ -291,13 +261,14 @@ export class Controller {
     }
 
     refreshAllMoves() {
+        this.activePieces = [];
         for (let y = 0; y < 8; y++) {
             for (let x = 0; x < 8; x++) {
                 const piece = this.board[x][y];
                 if (piece) {
-                    const result = this.moveStrategies[piece.type](this.board, {x, y}, piece.color)
-                    piece.moves = result.moves;
-                    piece.attacks = result.attacks;
+                    const {moves, attacks} = this.moveStrategies[piece.type](this.board, {x, y}, piece.color)
+                    piece.moves = moves;
+                    piece.attacks = attacks;
                     this.activePieces.push({piece, coord: {x, y}});
                 }
             }
@@ -322,6 +293,31 @@ export class Controller {
         }
     }
 
+    executeMove(from: Coord, to: Coord, pieceData: Piece, direction: number) {
+        const isValidMove = pieceData.moves.some(m => m.x === to.x && m.y === to.y);
+        if (!isValidMove) {
+            return;
+        }
+        this.updateFromTo(pieceData, from, to);
+        this.updatePieceMoves(pieceData, to);
+        pieceData.isMoved = true;
+        if (pieceData.type === 'king' && Math.abs(to.x - from.x) === 2) {
+            const rookFromX = to.x === 6 ? 7 : 0;
+            const rookToX = to.x === 6 ? 5 : 3;
+            this.castleRookExecuteMove({x: rookFromX, y: from.y}, {x: rookToX, y: to.y});
+        }
+        this.gameState.color = this.gameState.color === 'white' ? 'black' : 'white';
+        this.gameState.lastMove = {from, to, pieceType: pieceData.type};
+        
+        this.throwPieceLogic(to, direction);
+        if (pieceData.type === 'pawn' && Math.abs(to.y - from.y) === 2) {
+            this.gameState.enPassantTarget = {x: to.x, y: to.y + direction};
+        } else {
+            this.gameState.enPassantTarget = null;
+        }
+        this.refreshAllMoves();
+    }
+
     movePiece(piece: HTMLElement, target: Coord) {
         const from: Coord = {x: +piece.dataset.xcoord!, y: +piece.dataset.ycoord!}
         const pieceData = this.board[from.x][from.y];
@@ -329,54 +325,21 @@ export class Controller {
         if (!pieceData) {
             return;
         }
-
-        const isValidMove = pieceData.moves.some(m => m.x === target.x && m.y === target.y);
-        if (!isValidMove) {
-            return;
-        }
-        this.clearHighlights(pieceData.moves);
-        this.gameState.color = this.gameState.color === 'white' ? 'black' : 'white';
-        this.gameState.lastMove = {from, to: target, pieceType: pieceData.type};
+        const prevMoves = pieceData.moves;
+        const direction = pieceData.color === 'white' ? 1 : -1;
+        this.executeMove(from, target, pieceData, direction);
+        this.clearHighlights(prevMoves);
         if (pieceData.type === 'king' && Math.abs(target.x - from.x) === 2) {
             const rookFromX = target.x === 6 ? 7 : 0;
             const rookToX = target.x === 6 ? 5 : 3;
             this.castleRookMove({x: rookFromX, y: from.y}, {x: rookToX, y: target.y});
         }
-        this.board[from.x][from.y] = null;
-        const targetPiece = this.board[target.x][target.y];
-        let enPassantTarget: Square = null;
-        const direction = pieceData.color === 'white' ? 1 : -1;
-        if (this.gameState.enPassantTarget !== null) {
-            if (target.x === this.gameState.enPassantTarget?.x && target.y === this.gameState.enPassantTarget?.y) {
-                enPassantTarget = this.board[target.x][target.y + direction];
-            }
-        }
-        this.board[target.x][target.y] = pieceData;
-        pieceData.isMoved = true;
-        this.gameState.lastMove = {from, to: target, pieceType: pieceData.type};
-        this.gameState.color = pieceData.color === 'black' ? 'white' : 'black';
-        if (targetPiece || enPassantTarget) {
-            const to = {x: target.x, y: enPassantTarget !== null ? target.y + direction : target.y};
-            enPassantTarget !== null ? this.gameState.removedPieces[this.gameState.color].push(enPassantTarget as Piece) : this.gameState.removedPieces[this.gameState.color].push(targetPiece as Piece);
-            this.removeTargetElement(to);
-            if (enPassantTarget) {
-                this.board[to.x][to.y] = null;
-            }
-            this.activePieces.splice(this.activePieces.indexOf(this.activePieces.find(active => active.coord.x === target.x && active.coord.y === to.y)!), 1);
-        }
-        
         piece.dataset.xcoord = target.x.toString();
         piece.dataset.ycoord = target.y.toString();
-
-        const {moves, attacks} = this.moveStrategies[pieceData.type](this.board, target, pieceData.color);
-        pieceData.attacks = attacks;
-        pieceData.moves = moves;
-        this.activePieces[this.activePieces.indexOf(this.activePieces.find(active => active.coord.x === from.x && active.coord.y === from.y)!)] = {piece: pieceData, coord: target};
-        this.updateActiveMoves();
-        if (pieceData.type === 'pawn' && Math.abs(target.y - from.y) === 2) {
-            this.gameState.enPassantTarget = {x: target.x, y: target.y + direction};
-        } else {
-            this.gameState.enPassantTarget = null;
+        const to = {x: target.x, y: this.gameState.enPassantTarget !== null ? target.y + direction : target.y};
+        const square = this.board[to.x][to.y];
+        if (square) {
+            this.removeTargetElement(to)
         }
         this.updateElementPosition(piece, target);
         this.selectedPiece = null;
@@ -387,7 +350,7 @@ export class Controller {
 
     private clearHighlights(moves: Move[]) {
         moves.forEach(move => {
-            const el = document.querySelector(`[data-xcoord="${move.x}"][data-ycoord="${move.y}"]`);
+            const el = document.querySelector(`div[data-xcoord="${move.x}"][data-ycoord="${move.y}"]`);
             el?.classList.remove('bg-red-300!', 'bg-yellow-300!');
         });
     }
@@ -398,7 +361,7 @@ export class Controller {
     }
 
     removeTargetElement(target: Coord) {
-        const square = document.querySelector(`[data-xcoord="${target.x}"][data-ycoord="${target.y}"]`);
+        const square = document.querySelector(`div[data-xcoord="${target.x}"][data-ycoord="${target.y}"]`);
         if (square) {
             square.firstChild?.remove();
         }
@@ -408,14 +371,6 @@ export class Controller {
         return this.activePieces
             .filter(piece => piece.piece!.color !== this.gameState.color)
             .some(piece => piece.piece!.attacks.some(attack => attack.x === coord.x && attack.y === coord.y));
-    }
-
-    updateActiveMoves() {
-        this.activePieces.forEach(activePiece => {
-            const {moves, attacks} = this.moveStrategies[activePiece.piece!.type](this.board, activePiece.coord, activePiece.piece!.color);
-            activePiece.piece!.attacks = attacks;
-            activePiece.piece!.moves = moves;
-        });
     }
 
     canCastle(color: Color, side: 'king' | 'queen') {
@@ -447,22 +402,20 @@ export class Controller {
         return true;
     }
 
-    castleRookMove(from: Coord, to: Coord) {
+    castleRookExecuteMove(from: Coord, to: Coord) {
         const rookFrom = this.board[from.x][from.y];
-        const piece = document.querySelector(`img[data-xcoord="${from.x}"][data-ycoord="${from.y}"]`) as HTMLElement;
-
-        this.board[to.x][to.y] = rookFrom;
-        this.board[from.x][from.y] = null;
-        rookFrom!.isMoved = true;
-        piece.dataset.xcoord = to.x.toString();
-        piece.dataset.ycoord = to.y.toString();
-        this.updateElementPosition(piece, to);
+        this.updateFromTo(rookFrom!, from, to);
         this.activePieces[this.activePieces.indexOf(this.activePieces.find(active => active.coord.x === from.x && active.coord.y === from.y)!)] = {piece: rookFrom, coord: to};
+    }
+
+    castleRookMove(from: Coord, to: Coord) {
+        const piece = document.querySelector(`img[data-xcoord="${from.x}"][data-ycoord="${from.y}"]`) as HTMLElement;
+        this.updateElementPosition(piece, to);
     }
 
     isChess() {
         let attackedMoves = 0;
-        const {moves} = this.activePieces.find(king => king.piece?.type === 'king' && king.piece.color !== this.gameState.color)?.piece!;
+        const {moves} = this.activePieces.find(king => king.piece?.type === 'king' && king.piece.color === this.gameState.color)?.piece!;
         for (const move of moves) {
             if (this.isSquareAttacked(move)) {
                 attackedMoves++;
@@ -474,8 +427,9 @@ export class Controller {
     displayWinnerModal() {
         this.gameState.winner = this.gameState.color;
         const dialog = document.createElement('dialog');
+        dialog.id = 'winnerModal';
         dialog.classList.add('p-4');
-        const heading = document.createElement('h1');
+        const heading = document.createElement('h2');
         heading.classList.add('text-4xl', 'text-center');
         heading.textContent = 'Checkmate';
         dialog.append(heading);
@@ -486,10 +440,12 @@ export class Controller {
         const button = document.createElement('button');
         button.classList.add('inline-block', 'mx-auto', 'rounded-lg', 'shadow', 'hover:bg-gray-100');
         button.textContent = 'play again';
+        button.id = 'resetGame';
         button.addEventListener('click', () => {
             this.resetGame();
         });
         dialog.append(button);
+        this.chessBoard.append(dialog);
     }
 
     resetGame() {
@@ -506,5 +462,35 @@ export class Controller {
         this.activePieces = [];
         this.selectedPiece = null;
         this.initBoard();
+    }
+
+    throwPieceLogic(target: Move, direction: number) {
+        const targetPiece = this.board[target.x][target.y];
+        let enPassantTarget: Square = null;
+        if (this.gameState.enPassantTarget !== null) {
+            if (target.x === this.gameState.enPassantTarget?.x && target.y === this.gameState.enPassantTarget?.y) {
+                enPassantTarget = this.board[target.x][target.y + direction];
+            }
+        }
+        if ((targetPiece && targetPiece.color === this.gameState.color) || (enPassantTarget && enPassantTarget.color === this.gameState.color)) {
+            enPassantTarget !== null ? this.gameState.removedPieces[this.gameState.color].push(enPassantTarget as Piece) : this.gameState.removedPieces[this.gameState.color].push(targetPiece as Piece);
+            const to = {x: target.x, y: this.gameState.enPassantTarget !== null ? target.y + direction : target.y};
+            if (enPassantTarget) {
+                this.board[to.x][to.y] = null;
+            }
+            this.activePieces.splice(this.activePieces.indexOf(this.activePieces.find(active => active.coord.x === target.x && active.coord.y === to.y)!), 1);
+        }
+    }
+
+    updatePieceMoves(pieceData: Piece, target: Move) {
+        const {moves, attacks} = this.moveStrategies[pieceData.type](this.board, target, pieceData.color);
+        pieceData.attacks = attacks;
+        pieceData.moves = moves;
+    }
+
+    updateFromTo(pieceData: Piece, from: Coord, to: Coord) {
+        this.board[to.x][to.y] = pieceData;
+        this.board[from.x][from.y] = null;
+        pieceData!.isMoved = true;
     }
 }

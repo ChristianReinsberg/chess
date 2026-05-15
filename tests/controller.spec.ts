@@ -112,6 +112,41 @@ describe('Chess Board Logic', () => {
         king.attacks = result.attacks;
         expect(king.moves.length).toBe(8);
     });
+
+    it('should reset game when resetGame is called', () => {
+        const square = {x: 0, y: 0};
+        const index = controller.activePieces.indexOf(controller.activePieces.find(piece => piece.coord.x === square.x && piece.coord.y === square.y)!);
+        controller.activePieces.splice(index, 1);
+        controller.board[square.x][square.y] = null;
+        expect(controller.board[0][0]).toBeNull();
+        controller.board[3][3] = controller.board[0][1];
+        expect(controller.board[3][3]).not.toBeNull();
+        controller.displayWinnerModal();
+        expect(controller.gameState.winner).toBe(controller.gameState.color);
+        expect(document.querySelector('#winnerModal')).not.toBeNull();
+        expect(document.querySelector('#resetGame')).not.toBeNull();
+        document.getElementById('resetGame')?.click();
+        expect(controller.board[0][0]).not.toBeNull();
+        expect(controller.board[3][3]).toBeNull();
+        expect(controller.activePieces.length).toBe(32);
+        expect(controller.gameState.color).toBe('white');
+        expect(controller.gameState.removedPieces.black.length).toBe(0);
+        expect(controller.gameState.removedPieces.white.length).toBe(0);
+        expect(controller.gameState.winner).toBeNull();
+        expect(controller.selectedPiece).toBeNull();
+    });
+
+    it('should clear selection when another piece is selected', () => {
+        const pawn1 = document.querySelector('#white-pawn-0') as HTMLElement;
+        const pawn2 = document.querySelector('#white-pawn-1') as HTMLElement;
+        const pawn1Square = document.querySelector('#A3');
+        const pawn2Square = document.querySelector('#B3');
+        controller.selectPiece(pawn1);
+        expect(pawn1Square?.classList).toContain('bg-yellow-300!');
+        controller.selectPiece(pawn2);
+        expect(pawn1Square?.classList).not.toContain('bg-yellow-300!');
+        expect(pawn2Square?.classList).toContain('bg-yellow-300!');
+    })
 });
 
 describe('Movement Logic', () => {
