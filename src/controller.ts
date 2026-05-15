@@ -294,10 +294,6 @@ export class Controller {
     }
 
     executeMove(from: Coord, to: Coord, pieceData: Piece, direction: number) {
-        const isValidMove = pieceData.moves.some(m => m.x === to.x && m.y === to.y);
-        if (!isValidMove) {
-            return;
-        }
         this.updateFromTo(pieceData, from, to);
         this.updatePieceMoves(pieceData, to);
         pieceData.isMoved = true;
@@ -325,6 +321,10 @@ export class Controller {
         if (!pieceData) {
             return;
         }
+        const isValidMove = pieceData.moves.some(m => m.x === target.x && m.y === target.y);
+        if (!isValidMove) {
+            return;
+        }
         const prevMoves = pieceData.moves;
         const direction = pieceData.color === 'white' ? 1 : -1;
         this.executeMove(from, target, pieceData, direction);
@@ -343,6 +343,9 @@ export class Controller {
         }
         this.updateElementPosition(piece, target);
         this.selectedPiece = null;
+        if (((target.y === 7 && pieceData.color === 'black') || (target.y === 0 && pieceData.color === 'white')) && pieceData.type === 'pawn') {
+            this.displayPromotionModal(piece as HTMLImageElement);
+        }
         if (this.isChess()) {
             this.displayWinnerModal();
         }
@@ -462,6 +465,53 @@ export class Controller {
         this.activePieces = [];
         this.selectedPiece = null;
         this.initBoard();
+    }
+
+    promotionLogic(piece: Piece, coord: Coord, pieceType: PieceType) {
+                const {moves, attacks} = this.moveStrategies[piece.type](this.board, {x: coord.x, y: coord.y}, this.gameState.color);
+                piece!.attacks = attacks;
+                piece!.moves = moves;
+                piece!.type = pieceType;
+                this.board[coord.x][coord.y] = piece;
+    }
+
+    displayPromotionModal(piece: HTMLImageElement) {
+        const dialog = document.createElement('dialog');
+        dialog.classList.add('p-4', 'absolute', 'top-1/2', 'left-1/2', '-translate-x-1/2', '-translate-y-1/2', 'rounded-lg', 'shadow-lg');
+        dialog.id = 'promotionModal';
+        const heading = document.createElement('h2');
+        heading.classList.add('text-4xl', 'mb-4');
+        heading.textContent = 'Please choose the piecetype you want to promote to';
+        const pieceList = document.createElement('div');
+        pieceList.classList.add('flex', 'gap-4', 'mb-4', 'justify-between');
+        const pieces = ['queen', 'rook', 'bishop', 'knight'];
+        for (const pieceType of pieces) {
+            const button = document.createElement('button');
+            button.id = `select-${pieceType}`;
+            button.classList.add('border', 'border-black', 'p-4');
+            const img = document.createElement('img');
+            img.src = pieceImg[`${piece.dataset.color}-${pieceType}`];
+            img.alt = pieceType;
+            button.classList.add('rounded-lg', 'shadow', 'hover:bg-gray-100', 'p-4');
+            button.addEventListener('click', () => {
+                piece.src = pieceImg[`${piece.dataset.color}-${pieceType}`];
+                piece.id = `${this.gameState.color}-${pieceType}${piece.id.substring(piece.id.lastIndexOf('-'))}`;
+                const coord = {x: parseInt(piece.dataset.xcoord!), y: parseInt(piece.dataset.ycoord!)};
+                this.promotionLogic(this.board[coord.x][coord.y]!, coord, pieceType as PieceType);
+            });
+            button.append(img);
+            pieceList.append(button);
+        }
+        const button = document.createElement('button');
+        button.id = 'confirmPromotion';
+        button.classList.add('block', 'mx-auto', 'rounded-lg', 'shadow-lg', 'hover:bg-gray-100', 'p-2');
+        button.textContent = 'Confirm Selection'
+        button.addEventListener('click', () => {
+            dialog.remove();
+        });
+        dialog.append(...[heading, pieceList, button]);
+        this.chessBoard.append(dialog);
+        dialog.showModal();
     }
 
     throwPieceLogic(target: Move, direction: number) {

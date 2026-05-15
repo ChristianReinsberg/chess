@@ -448,4 +448,23 @@ describe('Movement Logic', () => {
         expect(wRook.dataset.ycoord).toBe('4');
         expect(square.firstChild).toBe(wRook);
     });
+
+    it('should open promotion dialog when white pawn is on A8', () => {
+        const index = controller.activePieces.indexOf(controller.activePieces.find(piece => piece.coord.x === 0 && piece.coord.y === 0)!);
+        controller.activePieces.splice(index, 1);
+        controller.board[0][0] = null;
+        controller.board[0][1]!.color = 'white';
+        controller.board[0][1]!.moves = controller.moveStrategies['pawn'](controller.board, {x: 0, y: 1}, 'white').moves;
+        const pawn = document.querySelector('#black-pawn-0') as HTMLElement;
+        controller.selectPiece(pawn);
+        controller.movePiece(pawn, {x: 0, y: 0});
+        const dialog = document.querySelector('#promotionModal');
+        expect(dialog).not.toBeNull();
+        const rook = document.querySelector('#select-rook') as HTMLElement;
+        rook.click();
+        expect(controller.board[0][0]!.type).toBe('rook');
+        const confirm = document.querySelector('#confirmPromotion') as HTMLButtonElement;
+        confirm.click();
+        expect(document.querySelector('#promotionModal')).toBeNull();
+    });
 });
