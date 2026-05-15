@@ -346,9 +346,7 @@ export class Controller {
         if (((target.y === 7 && pieceData.color === 'black') || (target.y === 0 && pieceData.color === 'white')) && pieceData.type === 'pawn') {
             this.displayPromotionModal(piece as HTMLImageElement);
         }
-        if (this.isChess(pieceData.color)) {
-            this.displayWinnerModal(pieceData.color);
-        }
+        this.checkGameEnd(pieceData.color === 'black' ? 'white' : 'black');
     }
 
     private clearHighlights(moves: Move[]) {
@@ -416,39 +414,55 @@ export class Controller {
         this.updateElementPosition(piece, to);
     }
 
-    isChess(color: Color) {
-        let attackedMoves = 0;
-        const {moves} = this.activePieces.find(king => king.piece?.type === 'king' && king.piece.color !== color)?.piece!;
-        for (const move of moves) {
-            if (this.isSquareAttacked(move)) {
-                attackedMoves++;
+    checkGameEnd(color: Color) {
+        let hasAnyLegalMoves = false;
+
+        for (const active of this.activePieces) {
+            if (active.piece?.color === color) {
+                const legalMoves = this.getLegalMoves(active.coord);
+                if (legalMoves.length > 0) {
+                    hasAnyLegalMoves = true;
+                    break;
+                }
             }
         }
-        return moves.length === attackedMoves;
+
+        if (hasAnyLegalMoves) {
+            return;
+        }
+
+        const kingPos = this.findKing(color);
+        const isKingAttacked = this.isSquareAttacked(kingPos);
+
+        if (isKingAttacked) {
+            this.displayWinnerModal(color === 'black' ? 'white' : 'black');
+        }
     }
 
     displayWinnerModal(winner: Color) {
         this.gameState.winner = winner;
         const dialog = document.createElement('dialog');
         dialog.id = 'winnerModal';
-        dialog.classList.add('p-4');
+        dialog.classList.add('p-4', 'absolute', 'top-1/2', 'left-1/2', '-translate-x-1/2', '-translate-y-1/2', 'rounded-lg', 'shadow-lg');
         const heading = document.createElement('h2');
         heading.classList.add('text-4xl', 'text-center');
         heading.textContent = 'Checkmate';
         dialog.append(heading);
         const paragraph = document.createElement('p');
         paragraph.classList.add('text-center');
-        paragraph.textContent = `The winner is ${this.gameState.color}`;
+        paragraph.textContent = `The winner is ${winner}`;
         dialog.append(paragraph);
         const button = document.createElement('button');
-        button.classList.add('inline-block', 'mx-auto', 'rounded-lg', 'shadow', 'hover:bg-gray-100');
+        button.classList.add('block', 'mx-auto', 'rounded-lg', 'shadow-lg', 'hover:bg-gray-100', 'p-2');
         button.textContent = 'play again';
         button.id = 'resetGame';
         button.addEventListener('click', () => {
             this.resetGame();
+            dialog.remove();
         });
         dialog.append(button);
         this.chessBoard.append(dialog);
+        dialog.showModal();
     }
 
     resetGame() {
