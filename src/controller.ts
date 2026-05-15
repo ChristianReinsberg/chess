@@ -185,7 +185,7 @@ export class Controller {
                 if (nextX >= 0 && nextX < 8 && nextY >= 0 && nextY < 8) {
                     const currentSquare = board[nextX][nextY];
                     if (currentSquare === null || currentSquare.color !== color) {
-                        if (!this.isSquareAttacked({x: nextX, y: nextY})) {
+                        if (!this.isSquareAttacked({x: nextX, y: nextY}) || (currentSquare !== null && currentSquare?.color !== color)) {
                             moves.push({x: nextX, y: nextY});
                         }
                         attacks.push({x: nextX, y: nextY});
@@ -285,7 +285,7 @@ export class Controller {
         const coords: Coord = {x: +(piece.dataset.xcoord as string), y: +(piece.dataset.ycoord as string)};
         let square = this.board[coords.x][coords.y];
         if (square) {
-            square.moves = this.moveStrategies[square?.type as PieceType](this.board, coords, square?.color as Color).moves;
+            square.moves = this.getLegalMoves(coords);
             for (const move of square.moves) {
                 let target = document.querySelector(`[data-xcoord="${move.x}"][data-ycoord="${move.y}"]`) as HTMLElement;
                 this.board[move.x][move.y]?.color !== square.color && this.board[move.x][move.y] !== null ? target.classList.add('bg-red-300!') : target.classList.add('bg-yellow-300!');
@@ -346,8 +346,8 @@ export class Controller {
         if (((target.y === 7 && pieceData.color === 'black') || (target.y === 0 && pieceData.color === 'white')) && pieceData.type === 'pawn') {
             this.displayPromotionModal(piece as HTMLImageElement);
         }
-        if (this.isChess()) {
-            this.displayWinnerModal();
+        if (this.isChess(pieceData.color)) {
+            this.displayWinnerModal(pieceData.color);
         }
     }
 
@@ -416,9 +416,9 @@ export class Controller {
         this.updateElementPosition(piece, to);
     }
 
-    isChess() {
+    isChess(color: Color) {
         let attackedMoves = 0;
-        const {moves} = this.activePieces.find(king => king.piece?.type === 'king' && king.piece.color === this.gameState.color)?.piece!;
+        const {moves} = this.activePieces.find(king => king.piece?.type === 'king' && king.piece.color !== color)?.piece!;
         for (const move of moves) {
             if (this.isSquareAttacked(move)) {
                 attackedMoves++;
@@ -427,8 +427,8 @@ export class Controller {
         return moves.length === attackedMoves;
     }
 
-    displayWinnerModal() {
-        this.gameState.winner = this.gameState.color;
+    displayWinnerModal(winner: Color) {
+        this.gameState.winner = winner;
         const dialog = document.createElement('dialog');
         dialog.id = 'winnerModal';
         dialog.classList.add('p-4');
@@ -542,5 +542,32 @@ export class Controller {
         this.board[to.x][to.y] = pieceData;
         this.board[from.x][from.y] = null;
         pieceData!.isMoved = true;
+    }
+
+    getLegalMoves (pos: Coord) {
+        const piece = this.board[pos.x][pos.y];
+        if (!piece) {
+            return [];
+        }
+
+        const {moves} = this.moveStrategies[piece.type](this.board, pos, piece.color);
+        return moves.filter(move => {
+            const tempPos = this.board[move.x][move.y];
+            this.board[move.x][move.y] = piece;
+            this.board[pos.x][pos.y] = null;
+            this.refreshAllMoves();
+            const kingPos = this.findKing(piece.color);
+            const isIllegal = this.isSquareAttacked(kingPos);
+
+            this.board[pos.x][pos.y] = piece;
+            this.board[move.x][move.y] = tempPos;
+            this.refreshAllMoves();
+
+            return !isIllegal;
+        });
+    }
+
+    findKing(color: Color) {
+        return this.activePieces.find(piece => piece.piece?.type === 'king' && piece.piece.color === color)!.coord;
     }
 }

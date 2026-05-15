@@ -121,8 +121,8 @@ describe('Chess Board Logic', () => {
         expect(controller.board[0][0]).toBeNull();
         controller.board[3][3] = controller.board[0][1];
         expect(controller.board[3][3]).not.toBeNull();
-        controller.displayWinnerModal();
-        expect(controller.gameState.winner).toBe(controller.gameState.color);
+        controller.displayWinnerModal('white');
+        expect(controller.gameState.winner).toBe('white');
         expect(document.querySelector('#winnerModal')).not.toBeNull();
         expect(document.querySelector('#resetGame')).not.toBeNull();
         document.getElementById('resetGame')?.click();
@@ -379,36 +379,22 @@ describe('Movement Logic', () => {
     });
 
     it('should check for checked king', () => {
-        const removeSquares = [{x: 1, y: 7}, {x: 2, y: 7}, {x: 3, y: 7}, {x: 5, y: 7}, {x: 6, y: 7}];
+        const removeSquares = [{x: 1, y: 7}, {x: 2, y: 7}, {x: 3, y: 7}, {x: 3, y: 6}, {x: 5, y: 7}, {x: 5, y: 6}, {x: 6, y: 7}];
         removeSquares.forEach(square => {
-            const index = controller.activePieces.indexOf(controller.activePieces.find(piece => piece.coord.x === square.x && piece.coord.y === square.y)!);
-            controller.activePieces.splice(index, 1);
             controller.board[square.x][square.y] = null;
         });
-        controller.activePieces.find(piece => piece.coord.x === 3 && piece.coord.y === 6)!.piece!.color = 'black';
-        controller.board[3][6]!.color = 'black';
-        controller.board[3][6]!.attacks = controller.moveStrategies['pawn'](controller.board, {x: 3, y: 6}, 'black').attacks;
-        controller.activePieces.find(piece => piece.coord.x === 5 && piece.coord.y === 6)!.piece!.color = 'black';
-        controller.board[5][6]!.color = 'black';
-        controller.board[5][6]!.attacks = controller.moveStrategies['pawn'](controller.board, {x: 3, y: 6}, 'black').attacks;
-        controller.activePieces.find(piece => piece.coord.x === 0 && piece.coord.y === 7)!.piece!.color = 'black';
+        controller.refreshAllMoves();
         controller.board[0][7]!.color = 'black';
-        controller.board[0][7]!.attacks = controller.moveStrategies['rook'](controller.board, {x: 0, y: 6}, 'black').attacks;
-        controller.activePieces.find(piece => piece.coord.x === 7 && piece.coord.y === 7)!.piece!.color = 'black';
         controller.board[7][7]!.color = 'black';
-        controller.board[7][7]!.attacks = controller.moveStrategies['rook'](controller.board, {x: 7, y: 7}, 'black').attacks;
-        controller.activePieces.find(piece => piece.coord.x === 0 && piece.coord.y === 7)!.piece!.color = 'black';
         controller.board[0][7]!.color = 'black';
-        controller.board[0][7]!.attacks = controller.moveStrategies['rook'](controller.board, {x: 0, y: 6}, 'black').attacks;
-        controller.activePieces.find(piece => piece.coord.x === 7 && piece.coord.y === 7)!.piece!.color = 'black';
-        controller.board[5][5] = controller.board[0][7];
-        controller.board[5][5]!.attacks = controller.moveStrategies['rook'](controller.board, {x: 5, y: 5}, 'black').attacks;
-        controller.board[3][5] = controller.board[0][7];
-        controller.board[3][5]!.attacks = controller.moveStrategies['rook'](controller.board, {x: 3, y: 5}, 'black').attacks;
-        controller.activePieces.push({piece: controller.board[5][5], coord: {x: 5, y: 5}}, {piece: controller.board[3][5], coord: {x: 3, y: 5}})
-        const pawn = document.querySelector(`#white-pawn-0`) as HTMLElement
+        controller.board[5][5] = controller.board[0][0];
+        controller.board[3][5] = controller.board[7][0];
+        controller.refreshAllMoves();
+        controller.gameState.color = 'black';
+        const pawn = document.querySelector(`#black-pawn-0`) as HTMLElement
         controller.selectPiece(pawn);
-        controller.movePiece(pawn, {x: 0, y: 5});
+        expect(document.querySelector('#A5')?.classList).toContain('bg-yellow-300!');
+        controller.movePiece(pawn, {x: 0, y: 3});
         expect(controller.gameState.winner).toBe('black');
     });
 
