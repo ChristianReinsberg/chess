@@ -53,12 +53,16 @@ const BLACK_PAWN_TABLE = [
 ```
 Resultat: Die KI verhält sich nicht wie eine sterile Rechenmaschine, sondern agiert wie ein dynamischer, leicht chaotischer Kneipen-Schachspieler – sie besetzt das Zentrum, entwickelt Springer und Läufer koordiniert und bestraft taktische Fehler des menschlichen Spielers sofort.
 
+---
+
 ## 💻 Tech Stack
 Sprache: TypeScript (Strict Mode)
 
 Bundler/Build-Tool: Webpack
 
 Styling: CSS3 / SCSS / TailwindCSS 4
+
+---
 
 ## 🔧 Installation & Lokaler Start
 1. Repository klonen:
@@ -81,7 +85,10 @@ docker compose build
 4. Entwicklungsserver starten:
 ```bash
 docker compose up
-```   
+```
+
+---
+
 ## 💡 Lessons Learned & Refactoring
 - Vorzeichen-Kompensation im Minimax: Die mathematische Herausforderung, Werte für Weiß (maximieren) und Schwarz (minimieren) sauber zu trennen, zeigte, wie fehleranfällig klassische Minimax-Implementierungen ohne Negamax-Refactoring in ungeraden Tiefen sind (Horizont-Effekt).
 
