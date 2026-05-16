@@ -39,7 +39,7 @@ Höhere Tiefen (3+) erforderten bei der vorliegenden DOM-nahen Architektur zu vi
 ### Das Heuristik-Tuning (Piece-Square Tables)
 Um der KI strategisches Verhalten einzuhauchen, wurde eine statische Stellungsbewertung (`evaluateBoard`) implementiert. Jede Figur besitzt eine positionsabhängige Bewertungsmatrix. 
 
-Beispiel für das aggressive Zentrum-Tuning der Bauern (`BLACK_PAWN_TABLE`):
+Beispiel für das aggressive Zentrum-Tuning der Bauern (`blackPawnTable`):
 ```typescript
 // Auszug aus der Positionsbewertung für Schwarz (KI)
 // Bauern werden massiv belohnt, wenn sie das Zentrum besetzen (+15)
