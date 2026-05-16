@@ -11,6 +11,7 @@ import WhiteKnight from './assets/white_knight.svg';
 import WhitePawn from './assets/white_pawn.svg';
 import WhiteQueen from './assets/white_queen.svg';
 import WhiteRook from './assets/white_rook.svg';
+import { blackBishopTable, blackKingTable, blackKnightTable, blackPawnTable, blackQueenTable, blackRookTable } from "./pieceSquareTables";
 
 const pieceImg: Record<string, string> = {
     'white-pawn': WhitePawn,
@@ -39,7 +40,17 @@ const typeList: Record<number, PieceType> = {
     8: 'pawn',
 };
 
+const pieceValue: Record<PieceType, number> = {
+    'pawn': 100,
+    'knight': 320,
+    'bishop': 330,
+    'rook': 500,
+    'queen': 900,
+    'king': 20000,
+};
+
 export class Controller {
+    isAgainstAI = false;
     board: Board = Array.from({length: 8}, () => new Array(8).fill(null));
     chessBoard = document.querySelector('#chess-board') as HTMLElement;
     activePieces: {piece: Square, coord: Coord}[] = [];
@@ -203,6 +214,7 @@ export class Controller {
 
     constructor() {
         this.initBoard();
+        this.displayMenu();
     }
 
     initBoard() {
@@ -347,6 +359,11 @@ export class Controller {
             this.displayPromotionModal(piece as HTMLImageElement);
         }
         this.checkGameEnd(pieceData.color === 'black' ? 'white' : 'black');
+        if (this.gameState.color === 'black' && !this.gameState.winner && this.isAgainstAI) {
+            setTimeout(() => {
+                this.triggerAIMove();
+            }, 500);
+        }
     }
 
     private clearHighlights(moves: Move[]) {
@@ -479,6 +496,7 @@ export class Controller {
         this.activePieces = [];
         this.selectedPiece = null;
         this.initBoard();
+        this.displayMenu();
     }
 
     promotionLogic(piece: Piece, coord: Coord, pieceType: PieceType) {
@@ -583,5 +601,171 @@ export class Controller {
 
     findKing(color: Color) {
         return this.activePieces.find(piece => piece.piece?.type === 'king' && piece.piece.color === color)!.coord;
+    }
+
+    evaluateBoard(): number {
+        let score = 0;
+        for (let y = 0; y < 8; y++) {
+            for (let x = 0; x < 8; x++) {
+                const piece = this.board[x][y];
+                if (piece) {
+                    let value = pieceValue[piece.type];
+                    let positionBonus = 0;
+                    if (piece.color === 'black') {
+                        switch(piece.type) {
+                            case 'pawn':
+                                positionBonus = blackPawnTable[y][x];
+                                break;
+                            case 'bishop':
+                                positionBonus = blackBishopTable[y][x];
+                                break;
+                            case 'king':
+                                positionBonus = blackKingTable[y][x];
+                                break;
+                            case 'knight':
+                                positionBonus = blackKnightTable[y][x];
+                                break;
+                            case 'queen':
+                                positionBonus = blackQueenTable[y][x];
+                                break;
+                            case 'rook':
+                                positionBonus = blackRookTable[y][x];
+                                break;
+                        }
+                        score -= (value + positionBonus)
+                    } else {
+                        score += value;
+                    }
+                }
+            }
+        }
+        return score;
+    }
+
+    getBestMoveForAI(color: Color): {from: Coord, to: Coord, score: number} | null {
+        let bestMove: {from: Coord, to: Coord, score: number} | null = null;
+        let bestScore = color === 'white' ? -Infinity : Infinity;
+
+        const pieces = this.activePieces.filter(piece => piece.piece?.color === color);
+        
+        for (const piece of pieces) {
+            const legalMoves = this.getLegalMoves(piece.coord);
+            
+            for (const move of legalMoves) {
+                const targetPiece = this.board[move.x][move.y];
+                const originalPiece = this.board[piece.coord.x][piece.coord.y];
+
+                this.board[move.x][move.y] = originalPiece;
+                this.board[piece.coord.x][piece.coord.y] = null;
+                this.refreshAllMoves();
+
+                const enemyColor = color === 'white' ? 'black' : 'white';
+                const enemyResponseScore = this.getBestEnemyResponse(enemyColor);
+
+                this.board[piece.coord.x][piece.coord.y] = originalPiece;
+                this.board[move.x][move.y] = targetPiece;
+                this.refreshAllMoves();
+
+                if (color === 'white') {
+                    if (enemyResponseScore > bestScore || (enemyResponseScore === bestScore && Math.random() > .6)) {
+                        bestScore = enemyResponseScore;
+                        bestMove = {from: piece.coord, to: move, score: bestScore};
+                    }
+                } else {
+                    if (enemyResponseScore < bestScore || (enemyResponseScore === bestScore && Math.random() > .6)) {
+                        bestScore = enemyResponseScore;
+                        bestMove = {from: piece.coord, to: move, score: bestScore};
+                    }
+                }
+            }
+        }
+        return bestMove;
+    }
+
+    private getBestEnemyResponse(color: Color): number {
+        let bestScore = color === 'white' ? -Infinity : Infinity;
+        const pieces = this.activePieces.filter(piece => piece.piece?.color === color);
+
+        let hasMoves = false;
+        
+        for (const piece of pieces) {
+            const legalMoves = this.getLegalMoves(piece.coord);
+            if (legalMoves.length > 0) {
+                hasMoves = true;
+            }
+            for (const move of legalMoves) {
+                const targetPiece = this.board[move.x][move.y];
+                const originalPiece = this.board[piece.coord.x][piece.coord.y];
+
+                this.board[move.x][move.y] = originalPiece;
+                this.board[piece.coord.x][piece.coord.y] = null;
+                this.refreshAllMoves();
+
+                const currentScore = this.evaluateBoard();
+
+                this.board[piece.coord.x][piece.coord.y] = originalPiece;
+                this.board[move.x][move.y] = targetPiece;
+
+                if (color === 'white') {
+                    if (currentScore > bestScore) {
+                        bestScore = currentScore;
+                    }
+                } else {
+                    if (currentScore < bestScore) {
+                        bestScore = currentScore;
+                    }
+                }
+            }
+        }
+        if (!hasMoves) {
+            const kingPos = this.findKing(color);
+            if (this.isSquareAttacked(kingPos, color)) {
+                return color === 'white' ? -99999 : 99999;
+            }
+            return 0;
+        }
+        return bestScore;
+    }
+
+    triggerAIMove() {
+        if (this.gameState.winner || this.gameState.color === 'white') {
+            return;
+        }
+
+        const move = this.getBestMoveForAI('black');
+        if (move) {
+            const pieceElement = document.querySelector(`img[data-xcoord="${move.from.x}"][data-ycoord="${move.from.y}"]`) as HTMLElement;
+            if (pieceElement) {
+                this.movePiece(pieceElement, move.to);
+            }
+        }
+    }
+
+    displayMenu() {
+        const dialog = document.createElement('dialog');
+        dialog.classList.add('p-4', 'absolute', 'top-1/2', 'left-1/2', '-translate-x-1/2', '-translate-y-1/2', 'rounded-lg', 'shadow-lg');
+        dialog.id = 'promotionModal';
+        const heading = document.createElement('h2');
+        heading.classList.add('text-4xl', 'mb-4');
+        heading.textContent = 'Please choose your game mode';
+        const singlePlayer = document.createElement('button');
+        const multiPlayer = document.createElement('button');
+        singlePlayer.id = 'singleplayer';
+        singlePlayer.classList.add('block', 'mx-auto', 'rounded-lg', 'shadow-lg', 'hover:bg-gray-100', 'p-2');
+        singlePlayer.textContent = 'Play against AI'
+        singlePlayer.addEventListener('click', () => {
+            this.isAgainstAI = true;
+            dialog.remove();
+        });
+        multiPlayer.id = 'multiplayer';
+        multiPlayer.classList.add('block', 'mx-auto', 'rounded-lg', 'shadow-lg', 'hover:bg-gray-100', 'p-2');
+        multiPlayer.textContent = 'Play against human locally'
+        multiPlayer.addEventListener('click', () => {
+            this.isAgainstAI = false;
+            dialog.remove();
+        });
+        dialog.append(...[heading, singlePlayer, multiPlayer]);
+        this.chessBoard.append(dialog);
+        dialog.showModal();
     }
 }

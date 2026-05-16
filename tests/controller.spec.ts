@@ -323,7 +323,7 @@ describe('Movement Logic', () => {
         controller.board[0][0].attacks = kingMovesAttacks.attacks;
         controller.board[0][0].moves = kingMovesAttacks.moves;
         controller.activePieces.push(...[{piece: controller.board[0][0], coord: {x: 0, y: 0}}, {piece: controller.board[0][7], coord: {x: 0, y: 7}}]);
-        expect(controller.isSquareAttacked({x: 0, y: 0})).toBe(true);
+        expect(controller.isSquareAttacked({x: 0, y: 0}, 'white')).toBe(true);
     });
 
     it('should allow castle if king and rook have not been moved, squares between them are empty and not attacked', () => {
@@ -436,6 +436,8 @@ describe('Movement Logic', () => {
     });
 
     it('should open promotion dialog when white pawn is on A8', () => {
+        const button = document.querySelector('#multiplayer') as HTMLButtonElement;
+        button.click();
         const index = controller.activePieces.indexOf(controller.activePieces.find(piece => piece.coord.x === 0 && piece.coord.y === 0)!);
         controller.activePieces.splice(index, 1);
         controller.board[0][0] = null;
@@ -453,4 +455,23 @@ describe('Movement Logic', () => {
         confirm.click();
         expect(document.querySelector('#promotionModal')).toBeNull();
     });
+
+    it('should let the ai react to moves the player takes', () => {
+        const singleplayer = document.querySelector('#singleplayer') as HTMLButtonElement;
+        singleplayer.click();
+        const whitePawn = document.querySelector('#white-pawn-0') as HTMLElement;
+        controller.selectPiece(whitePawn);
+        controller.movePiece(whitePawn, {x: 0, y: 4});
+        setTimeout(() => {
+            const aiPiece = controller.activePieces.find(piece => piece.piece?.color === 'black' && piece.piece.isMoved);
+            expect(aiPiece).toBeDefined();
+        }, 600);
+    });
+
+    it('should move on triggerAIMove call', () => {
+        controller.gameState.color = 'black';
+        controller.triggerAIMove();
+        const aiPiece = controller.activePieces.find(piece => piece.piece?.color === 'black' && piece.piece.isMoved);
+        expect(aiPiece).toBeDefined();
+    })
 });
